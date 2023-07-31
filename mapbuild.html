@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+            integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+            crossorigin=""/>
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+         crossorigin=""></script>
+
+
+        <style>
+            #issMap {
+            margin:0;
+            padding: 0;
+            color:rgba(100,130,40,0.8);
+            height : 100vh;
+            width: 100vw
+        }
+        </style>
+
+
+        <title> GEO FENCING</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+    </head >
+    <body style="margin: 0">
+        <div id="issMap"></div>
+        <script type="text/javascript" src="https://stamen-maps.a.ssl.fastly.net/js/tile.stamen.js?v1.3.0"></script>
+        <script type="text/javascript">
+        var loc_list = []
+
+
+let acc_token = "pk.eyJ1Ijoic3VtaXRjaGF0dGVyamVlIiwiYSI6ImNrd2prODhoazB6enIycHBrZmRrY2FtMGkifQ.WS22x5YJykpK9aFATKT8EA";
+       var map = L.map('issMap', {attributionControl: false, zoomControl: false}).setView([27.49, 75.93], 18);
+       L.control.zoom({
+           position: 'bottomright'
+       }).addTo(map);
+       L.tileLayer(`https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.png?access_token=${acc_token}`,
+                   {
+                     maxZoom: 24,
+                     id: "mapbox/satellite-v11",
+                     tileSize: 512,
+                     zoomOffset: -1,
+                     accessToken: acc_token,
+                   }
+               ).addTo(map);
+
+        var polygon = null;
+
+        map.on('click', function(e) {
+                var lat = e.latlng.lat; // Latitude of the clicked point
+                var lng = e.latlng.lng; // Longitude of the clicked point
+                var coords=[lat, lng]
+                loc_list.push(coords)
+                console.log("Clicked coordinates: " + lat + ", " + lng);
+                if(loc_list.length!=0 && polygon!=null){
+                        polygon.remove();
+                }
+                var new_poly = L.polygon(loc_list,{color:'blue'}).addTo(map);
+                console.log("length Coordinates -> "+ loc_list.length);
+                polygon = new_poly
+        });
+
+
+</script>
+
+<script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
+
+<script type="text/javascript">
+var navIcon = L.icon({
+    iconUrl: 'navigation.png',
+    iconSize:     [20, 20]
+});
+    var plotPoly;
+    var redoPoly;
+    var loadObj;
+    var marker = null;
+    window.onload = function()
+    {
+    var new_marker = null;
+        new QWebChannel(qt.webChannelTransport, function(channel) {
+            loadObj = channel.objects.loadObj;
+            loadObj.someSignal3.connect(function() {
+            var liveloc = [loadObj.live[0], loadObj.live[1]]
+               console.log(liveloc + " live loc" + typeof(liveloc))
+               map.setView(liveloc)
+              markers = L.marker(liveloc, {icon: navIcon}).addTo(map);
+              new_marker=markers
+})
+
+            plotPoly = channel.objects.plotPoly;
+            plotPoly.someSignal.connect(function() {
+                            plotPoly.vis = loc_list
+                            map.off('click')
+
+
+
+
+                        });
+
+            plotPoly.someSignal4.connect(function() {
+            new_marker.remove()
+
+
+                            var liveloc = [plotPoly.pt[0], plotPoly.pt[1]]
+
+                            console.log('icon at' + plotPoly.pt)
+                            if(marker!=null){
+
+                                marker.remove()
+                                marker=null
+                                console.log('marker removed')
+                               }
+                            new_markers = L.marker(liveloc, {icon:navIcon}).addTo(map)
+                            marker=new_markers
+
+
+                        });
+
+
+            redoPoly = channel.objects.redoPoly;
+            redoPoly.someSignal2.connect(function() {
+                loc_list = []
+                plotPoly.vis = loc_list
+                polygon.remove()
+                map.on('click', function(e) {
+                        var lat = e.latlng.lat;
+                        var lng = e.latlng.lng;
+                        var coords=[lat, lng]
+                        loc_list.push(coords)
+                        console.log("Clicked coordinates: " + lat + ", " + lng );
+                        if(loc_list.length!=0 && polygon!=null){
+                                polygon.remove();
+                        }
+                        var new_poly = L.polygon(loc_list,{color:'blue'}).addTo(map);
+                        console.log("length Coordinates -> "+ loc_list.length);
+                        polygon = new_poly
+                });
+                });
+
+
+
+        });
+    }
+
+
+</script>
+
+
+    </body>
+</html>
